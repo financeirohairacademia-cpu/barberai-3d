@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>BarberAI 3D</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@500&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#080808;color:#F0EDE8;font-family:'Inter',sans-serif;overscroll-behavior:none;}
+  #app{display:flex;flex-direction:column;min-height:100vh;}
+  header{background:#0D0D0D;border-bottom:1px solid #1E1E1E;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20;}
+  .logo-title{font-family:'DM Serif Display',serif;font-size:19px;line-height:1;}
+  .logo-sub{font-size:9.5px;color:#666058;letter-spacing:.1em;text-transform:uppercase;margin-top:1px;}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:#4DFF9F;box-shadow:0 0 6px #4DFF9F80;}
+  .live-txt{font-size:10px;color:#666058;font-family:'JetBrains Mono',monospace;}
+  #canvas-wrap{position:relative;width:100%;height:390px;background:#080808;flex-shrink:0;touch-action:none;}
+  #c{width:100%;height:100%;display:block;cursor:grab;touch-action:none;}
+  #loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+  .ring{width:36px;height:36px;border:3px solid #1E1E1E;border-top-color:#C8A96E;border-radius:50%;animation:spin .8s linear infinite;}
+  .load-txt{font-size:12px;color:#666058;}
+  .progress-bar{width:160px;height:2px;background:#1E1E1E;border-radius:2px;}
+  .progress-fill{height:100%;background:#C8A96E;border-radius:2px;width:0%;transition:width .3s;}
+  #float-label{position:absolute;top:12px;left:16px;background:#000000CC;border-radius:6px;padding:5px 10px;border:1px solid #1E1E1E;backdrop-filter:blur(8px);display:none;}
+  .float-name{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;}
+  .float-sub{font-size:9px;color:#666058;text-transform:uppercase;letter-spacing:.06em;}
+  #hint{position:absolute;bottom:10px;right:14px;font-size:10px;color:#66605880;font-style:italic;}
+  #views{background:#0D0D0D;border-bottom:1px solid #1E1E1E;padding:10px 16px;overflow-x:auto;}
+  #views-row{display:flex;gap:6px;}
+  .vbtn{padding:5px 13px;border-radius:20px;font-size:11px;background:transparent;color:#666058;border:1px solid #1E1E1E;cursor:pointer;transition:all .18s;white-space:nowrap;}
+  .vbtn.active{background:#C8A96E;color:#000;border-color:#C8A96E;}
+  #content{flex:1;overflow-y:auto;padding:16px 16px 40px;max-width:520px;margin:0 auto;width:100%;}
+  .section-label{font-size:9.5px;color:#666058;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;}
+  .cut-card{padding:11px 14px;border-radius:9px;border:1.5px solid #1E1E1E;cursor:pointer;transition:all .2s;background:#111;margin-bottom:8px;}
+  .cut-card:hover{border-color:#C8A96E50;}
+  .cut-card.active{border-color:#C8A96E;background:#C8A96E0A;}
+  .cut-row{display:flex;justify-content:space-between;align-items:center;}
+  .cut-name{font-weight:500;font-size:14px;color:#666058;}
+  .cut-name.active{color:#F0EDE8;}
+  .cut-deg{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:#666058;}
+  .cut-desc{font-size:12px;color:#666058;margin-top:5px;line-height:1.5;display:none;}
+  .cut-desc.active{display:block;}
+  .deg-row{display:flex;gap:8px;margin-bottom:10px;}
+  .dbtn{flex:1;padding:10px 6px;border-radius:8px;border:1.5px solid #1E1E1E;background:#111;cursor:pointer;text-align:center;transition:all .18s;display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .dbtn-num{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:#666058;}
+  .dbtn-lbl{font-size:9.5px;color:#666058;text-transform:uppercase;}
+  .deg-desc{padding:10px 12px;border-radius:8px;font-size:12px;color:#666058;line-height:1.55;margin-bottom:14px;}
+  .info-card{background:#111;border-radius:10px;padding:14px 16px;border:1px solid #1E1E1E;margin-bottom:14px;}
+  .step-row{display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #1E1E1E;}
+  .step-row:last-child{border-bottom:none;}
+  .step-num{min-width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;}
+  .step-txt{font-size:13px;color:#F0EDE8;line-height:1.5;}
+  .leg-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1E1E1E;}
+  .leg-row:last-child{border-bottom:none;}
+  .leg-bar{width:26px;height:3px;border-radius:2px;flex-shrink:0;}
+  .leg-txt{font-size:12px;color:#666058;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .fade{animation:fadeUp .35s ease both;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <div class="logo-title">BarberAI 3D</div>
+      <div class="logo-sub">Geometria de corte · GLB</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="live-dot" id="status-dot" style="background:#C8A96E;box-shadow:none;"></div>
+      <span class="live-txt" id="status-txt">0%</span>
+    </div>
+  </header>
+
+  <div id="canvas-wrap">
+    <canvas id="c"></canvas>
+    <div id="loading">
+      <div class="ring"></div>
+      <div class="load-txt" id="load-pct">Carregando modelo 3D... 0%</div>
+      <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
+    </div>
+    <div id="float-label">
+      <div class="float-name" id="fl-name">Flow</div>
+      <div class="float-sub" id="fl-sub">45° · radial</div>
+    </div>
+    <div id="hint">👆 arraste para girar</div>
+  </div>
+
+  <div id="views">
+    <div id="views-row">
+      <button class="vbtn active" onclick="goView(0,0,'front')">Frontal</button>
+      <button class="vbtn" onclick="goView(-1.32,0,'sideL')">Lateral E</button>
+      <button class="vbtn" onclick="goView(1.32,0,'sideR')">Lateral D</button>
+      <button class="vbtn" onclick="goView(3.14159,0,'back')">Posterior</button>
+      <button class="vbtn" onclick="goView(0,-1.1,'top')">Topo</button>
+    </div>
+  </div>
+
+  <div id="content">
+    <div style="margin-bottom:14px;">
+      <div class="section-label">Estilo de corte</div>
+      <div id="cuts-list"></div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div class="section-label">Elevação de corte</div>
+      <div class="deg-row" id="deg-row"></div>
+      <div class="deg-desc" id="deg-desc"></div>
+    </div>
+    <div class="info-card" style="margin-bottom:14px;">
+      <div class="section-label">Execução</div>
+      <div id="steps-list"></div>
+    </div>
+    <div class="info-card">
+      <div class="section-label">Legenda 3D</div>
+      <div id="legend"></div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const MODEL_URL = "https://eshufnkarfwvqibecyzr.supabase.co/storage/v1/object/public/models/head.glb";
+
+const CUTS = [
+  { id:"flow",  name:"Flow / Curtain", deg:45,  color:"#C8A96E", radial:true,  slices:8,
+    desc:"Cabelo médio com queda lateral natural. Seções radiais a 45°.",
+    steps:["Divide ao meio — apex","Seções radiais saindo do topo","45° elevação uniforme","Slip cut nas pontas para textura"] },
+  { id:"layer", name:"Camadas 90°",    deg:90,  color:"#4D9FFF", radial:false, slices:6,
+    desc:"Remove peso mantendo comprimento. Seções paralelas a 90°.",
+    steps:["Guia viajante na nuca","Seções paralelas horizontais","90° elevação uniforme","Verificar cantos no parietal"] },
+  { id:"grad",  name:"Graduação 45°",  deg:45,  color:"#FF7A4D", radial:false, slices:5,
+    desc:"Acúmulo de peso. Efeito stacked na nuca.",
+    steps:["Base estacionária na nuca","Seções horizontais finas","45° progressivo","Linha de peso na nuca"] },
+  { id:"blunt", name:"One Length",     deg:0,   color:"#B44DFF", radial:false, slices:4,
+    desc:"Zero elevação. Peso máximo. Linha de peso pura.",
+    steps:["Guia estacionária horizontal","0° — sem elevação","Linha paralela ao chão","Sem camadas"] },
+];
+
+const DEG_DESCS = {
+  0:   "Sem elevação — cabelo cai naturalmente. Linha de peso pura. Base do one-length clássico.",
+  45:  "Elevação a 45° — graduação suave. Acúmulo progressivo de peso. Efeito stacked.",
+  90:  "Perpendicular à cabeça — camadas uniformes. Remove volume sem sacrificar comprimento.",
+  135: "Overdirection — long layers. Textura máxima. Movimento e leveza.",
+};
+
+let cutIdx = 0;
+let rootGroup, sliceGroup, renderer, camera, scene;
+let tRY=0, tRX=0, cRY=0, cRX=0;
+let dragging=false, px=0, py=0;
+
+// ── Build Slices ──────────────────────────────────────────────────────────────
+function buildSlices(cut) {
+  const g = new THREE.Group();
+  const ac = new THREE.Color(cut.color);
+  const darkMat = () => new THREE.MeshStandardMaterial({color:0x141414,roughness:.2,metalness:.8,side:THREE.DoubleSide,transparent:true,opacity:.93});
+  const edgeMat = () => new THREE.LineBasicMaterial({color:ac});
+  const redMat  = new THREE.MeshBasicMaterial({color:0xCC1111,side:THREE.DoubleSide});
+
+  if (cut.radial) {
+    const n = cut.slices;
+    for (let i=0;i<n;i++) {
+      const frac  = i/(n-1);
+      const angle = -0.72 + frac*1.44;
+      const h = 1.6 + (0.5-Math.abs(frac-0.5))*0.25;
+      const geo = new THREE.BoxGeometry(0.86, h, 0.02);
+      const mesh = new THREE.Mesh(geo, darkMat());
+      const r = 0.38;
+      mesh.position.set(Math.sin(angle)*r*0.65, 1.28+Math.cos(Math.abs(angle)*0.75)*0.08, Math.cos(angle)*r*0.22-0.06);
+      mesh.rotation.z = angle;
+      mesh.rotation.x = -0.05+Math.abs(angle)*0.03;
+      mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat()));
+      if (i===Math.floor(n/2)) {
+        const s = new THREE.Mesh(new THREE.BoxGeometry(0.026,h+0.04,0.024), redMat);
+        s.position.z=0.011; mesh.add(s);
+      }
+      g.add(mesh);
+    }
+  } else {
+    const n = cut.slices;
+    const er = (cut.deg*Math.PI)/180;
+    for (let i=0;i<n;i++) {
+      const t=(i/(n-1))*2-1;
+      const geo=new THREE.BoxGeometry(0.026,1.3+er*0.32,0.52);
+      const mesh=new THREE.Mesh(geo,darkMat());
+      mesh.position.set(t*0.78, 0.92+Math.abs(t)*0.05, -0.16);
+      mesh.rotation.x=er-Math.PI/2;
+      mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),edgeMat()));
+      g.add(mesh);
+    }
+    for (let a=0;a<3;a++) {
+      const pts=[];
+      const yA=0.26-a*0.37;
+      for(let j=0;j<=64;j++){
+        const th=-Math.PI*0.73+(j/64)*Math.PI*1.46;
+        pts.push(new THREE.Vector3(Math.sin(th)*1.04, yA+Math.cos(th)*0.055, Math.cos(th)*0.98*0.88));
+      }
+      g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({color:a===0?0xDD2020:0x2E2E2E})));
+    }
+  }
+  return g;
+}
+
+// ── Swap Slices ───────────────────────────────────────────────────────────────
+function swapSlices(cut) {
+  if (sliceGroup && rootGroup) {
+    sliceGroup.traverse(c=>{c.geometry?.dispose();c.material?.dispose();});
+    rootGroup.remove(sliceGroup);
+  }
+  sliceGroup = buildSlices(cut);
+  if (rootGroup) rootGroup.add(sliceGroup);
+}
+
+// ── Init Three.js ─────────────────────────────────────────────────────────────
+function initScene() {
+  const canvas = document.getElementById('c');
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+
+  renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2.5));
+  renderer.setSize(W,H);
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.18;
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+
+  scene = new THREE.Scene();
+  scene.background=new THREE.Color(0x080808);
+  scene.fog=new THREE.FogExp2(0x080808,0.052);
+
+  camera=new THREE.PerspectiveCamera(36,W/H,0.05,50);
+  camera.position.set(0,0.18,4.8);
+
+  // Luzes
+  scene.add(new THREE.AmbientLight(0xfff5e0,0.38));
+  const key=new THREE.DirectionalLight(0xfff4d0,2.6);
+  key.position.set(2.5,5,3.5); key.castShadow=true;
+  key.shadow.mapSize.width=key.shadow.mapSize.height=2048;
+  key.shadow.bias=-0.0006; scene.add(key);
+  const fill=new THREE.DirectionalLight(0x8898CC,0.65);
+  fill.position.set(-3,1.5,2); scene.add(fill);
+  const rim=new THREE.DirectionalLight(0xFFE5AA,1.05);
+  rim.position.set(.5,-2,-3.5); scene.add(rim);
+  const top=new THREE.PointLight(0xFFFFFF,.85,10);
+  top.position.set(0,5,.5); scene.add(top);
+  const back=new THREE.DirectionalLight(0x334466,.4);
+  back.position.set(0,2,-4); scene.add(back);
+
+  // Chão
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(10,10),
+    new THREE.MeshStandardMaterial({color:0x0A0A0A,roughness:1}));
+  floor.rotation.x=-Math.PI/2; floor.position.y=-2.4; floor.receiveShadow=true;
+  scene.add(floor);
+  const grid=new THREE.GridHelper(8,16,0x181818,0x111111);
+  grid.position.y=-2.38; scene.add(grid);
+
+  // Root group
+  rootGroup=new THREE.Group();
+  scene.add(rootGroup);
+
+  // Carrega GLB
+  const loader=new GLTFLoader();
+  loader.load(MODEL_URL, gltf=>{
+    const model=gltf.scene;
+    const box=new THREE.Box3().setFromObject(model);
+    const center=box.getCenter(new THREE.Vector3());
+    const size=box.getSize(new THREE.Vector3());
+    const scale=2.2/Math.max(size.x,size.y,size.z);
+    model.position.sub(center);
+    model.scale.setScalar(scale);
+    model.position.y+=0.1;
+    model.traverse(child=>{
+      if(child.isMesh){
+        child.castShadow=true; child.receiveShadow=true;
+        if(!child.material.map){
+          child.material=new THREE.MeshStandardMaterial({color:0xC4A882,roughness:.68,metalness:.02});
+        }
+      }
+    });
+    rootGroup.add(model);
+    sliceGroup=buildSlices(CUTS[cutIdx]);
+    rootGroup.add(sliceGroup);
+
+    // UI pronta
+    document.getElementById('loading').style.display='none';
+    document.getElementById('float-label').style.display='block';
+    document.getElementById('status-dot').style.cssText='width:6px;height:6px;border-radius:50%;background:#4DFF9F;box-shadow:0 0 6px #4DFF9F80;';
+    document.getElementById('status-txt').textContent='LIVE 3D';
+    updateUI();
+  },
+  xhr=>{ const p=xhr.total>0?Math.round(xhr.loaded/xhr.total*100):0;
+    document.getElementById('load-pct').textContent=`Carregando... ${p}%`;
+    document.getElementById('prog').style.width=p+'%';
+    document.getElementById('status-txt').textContent=p+'%';
+  },
+  err=>{ console.error(err);
+    document.getElementById('load-pct').textContent='Erro ao carregar modelo';
+    document.getElementById('status-dot').style.background='#FF4D4D';
+  });
+
+  // Drag
+  canvas.addEventListener('pointerdown',e=>{dragging=true;px=e.clientX;py=e.clientY;canvas.setPointerCapture(e.pointerId);});
+  canvas.addEventListener('pointermove',e=>{
+    if(!dragging)return;
+    tRY+=(e.clientX-px)*0.013;
+    tRX=Math.max(-1.1,Math.min(1.1,tRX+(e.clientY-py)*0.006));
+    px=e.clientX;py=e.clientY;
+  });
+  canvas.addEventListener('pointerup',()=>{dragging=false;});
+
+  // Loop
+  (function tick(){
+    requestAnimationFrame(tick);
+    cRY+=(tRY-cRY)*.09; cRX+=(tRX-cRX)*.09;
+    if(rootGroup){rootGroup.rotation.y=cRY;rootGroup.rotation.x=cRX;}
+    renderer.render(scene,camera);
+  })();
+
+  // Resize
+  window.addEventListener('resize',()=>{
+    const w=canvas.clientWidth,h=canvas.clientHeight;
+    camera.aspect=w/h; camera.updateProjectionMatrix();
+    renderer.setSize(w,h);
+  });
+}
+
+// ── Views ─────────────────────────────────────────────────────────────────────
+window.goView = function(ry,rx,id) {
+  tRY=ry; tRX=rx;
+  document.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`[onclick*="${id}"]`).classList.add('active');
+};
+
+// ── UI Render ─────────────────────────────────────────────────────────────────
+function updateUI() {
+  const cut = CUTS[cutIdx];
+
+  // Float label
+  document.getElementById('fl-name').style.color=cut.color;
+  document.getElementById('fl-name').textContent=cut.name;
+  document.getElementById('fl-sub').textContent=`${cut.deg}° · ${cut.radial?'radial':'paralelo'}`;
+
+  // Cuts list
+  const cl=document.getElementById('cuts-list');
+  cl.innerHTML='';
+  CUTS.forEach((c,i)=>{
+    const d=document.createElement('div');
+    d.className='cut-card'+(i===cutIdx?' active':'');
+    d.innerHTML=`<div class="cut-row">
+      <span class="cut-name${i===cutIdx?' active':''}">${c.name}</span>
+      <span class="cut-deg" style="color:${i===cutIdx?c.color:'#666058'}">${c.deg}°</span>
+    </div>
+    <div class="cut-desc${i===cutIdx?' active':''}">${c.desc}</div>`;
+    d.onclick=()=>{cutIdx=i;swapSlices(CUTS[i]);updateUI();};
+    cl.appendChild(d);
+  });
+
+  // Deg buttons
+  const dr=document.getElementById('deg-row');
+  dr.innerHTML='';
+  [{deg:0,l:'Blunt',dc:'#B44DFF'},{deg:45,l:'Grad',dc:'#C8A96E'},
+   {deg:90,l:'Layer',dc:'#4D9FFF'},{deg:135,l:'Shag',dc:'#FF7A4D'}].forEach(b=>{
+    const on=cut.deg===b.deg;
+    const btn=document.createElement('div');
+    btn.className='dbtn'+(on?' active':'');
+    if(on){btn.style.borderColor=b.dc;btn.style.background=b.dc+'1A';}
+    btn.innerHTML=`<div class="dbtn-num" style="color:${on?b.dc:'#666058'}">${b.deg}°</div>
+      <div class="dbtn-lbl" style="color:${on?b.dc:'#66605870'}">${b.l}</div>`;
+    btn.onclick=()=>{const i=CUTS.findIndex(c=>c.deg===b.deg);if(i>=0){cutIdx=i;swapSlices(CUTS[i]);updateUI();}};
+    dr.appendChild(btn);
+  });
+
+  // Deg desc
+  const dd=document.getElementById('deg-desc');
+  dd.textContent=DEG_DESCS[cut.deg]||'';
+  dd.style.background=cut.color+'08';
+  dd.style.border=`1px solid ${cut.color}25`;
+
+  // Steps
+  const sl=document.getElementById('steps-list');
+  sl.innerHTML=cut.steps.map((s,i)=>`
+    <div class="step-row">
+      <div class="step-num" style="background:${cut.color}18;border:1px solid ${cut.color}50;color:${cut.color}">${i+1}</div>
+      <div class="step-txt">${s}</div>
+    </div>`).join('');
+
+  // Legend
+  document.getElementById('legend').innerHTML=[
+    {color:cut.color,label:'Fatias de seção de corte'},
+    {color:'#CC1111',label:'Linha central / eixo de repartição'},
+    {color:'#DD2020',label:'Linha guia — nível base do corte'},
+  ].map(l=>`<div class="leg-row">
+    <div class="leg-bar" style="background:${l.color}"></div>
+    <span class="leg-txt">${l.label}</span>
+  </div>`).join('');
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+initScene();
+updateUI();
+</script>
+</body>
+</html>
